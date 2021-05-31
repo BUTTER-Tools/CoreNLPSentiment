@@ -38,24 +38,13 @@ namespace CoreNLPSentiment
                                                                                                         {9, "SentenceText"} };
         public bool InheritHeader { get; } = false;
 
-        private bool IncludeSentenceText { get; set; } = true;
-
-        #region Setup Tagger Details
-        public static string jarRoot = Path.Combine(Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory),
-                                        "Plugins" + Path.DirectorySeparatorChar +
-                                        "Dependencies" + Path.DirectorySeparatorChar + @"stanford-corenlp-full-2018-02-27" + Path.DirectorySeparatorChar);
-
-        private StanfordCoreNLP pipeline { get; set; }
-
-        #endregion
-
 
 
         #region Plugin Details and Info
 
         public string PluginName { get; } = "CoreNLP Sentiment Analysis";
         public string PluginType { get; } = "Sentiment Analysis";
-        public string PluginVersion { get; } = "1.0.9";
+        public string PluginVersion { get; } = "1.1.0";
         public string PluginAuthor { get; } = "Ryan L. Boyd (ryan@ryanboyd.io)";
         public string PluginDescription { get; } = "Built around Stanford's CoreNLP for .NET (v3.9.1, English model). Uses a trained RNN model to classify sentences from \"very negative\" to \"very positive\". Produces sentence-level scores as output" + Environment.NewLine + Environment.NewLine +
             "Manning, Christopher D., Mihai Surdeanu, John Bauer, Jenny Finkel, Steven J. Bethard, and David McClosky. 2014. The Stanford CoreNLP Natural Language Processing Toolkit In Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics: System Demonstrations, pp. 55-60.";
@@ -69,24 +58,37 @@ namespace CoreNLPSentiment
                 return Properties.Resources.icon;
             }
         }
+        #endregion
 
+
+
+        private bool includeSentenceText { get; set; } = true;
+        private bool useBuiltInSentenceSplitter { get; set; } = true;
+
+        #region Setup Tagger Details
+        public static string jarRoot = Path.Combine(Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory),
+                                        "Plugins" + Path.DirectorySeparatorChar +
+                                        "Dependencies" + Path.DirectorySeparatorChar + @"stanford-corenlp-full-2018-02-27" + Path.DirectorySeparatorChar);
+
+        private StanfordCoreNLP pipeline { get; set; }
         #endregion
 
 
 
         public void ChangeSettings()
         {
-
-
-            if (MessageBox.Show("Do you want to include the text from each sentence in your output?", "Include Text?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            using (var form = new SettingsForm_CoreNLPSentiment(builtInSplitter: useBuiltInSentenceSplitter, textInOutput: includeSentenceText))
             {
-                IncludeSentenceText = true;
+
+                form.Icon = Properties.Resources.icon;
+
+                var result = form.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    useBuiltInSentenceSplitter = form.useBuiltInSentenceSplitter;
+                    includeSentenceText = form.includeSentenceText;
+                }
             }
-            else
-            {
-                IncludeSentenceText = false;
-            }
-            
         }
 
 
@@ -111,17 +113,21 @@ namespace CoreNLPSentiment
             }
 
 
+
             for (int i = 0; i < Input.StringList.Count; i++)
             {
 
                 //seems to prematurely exit sometimes. checking to see what might cause that -- maybe blank docs?
-                if (!string.IsNullOrEmpty(Input.StringList[i]) && !string.IsNullOrWhiteSpace(Input.StringList[i])) { 
+                if (!string.IsNullOrEmpty(Input.StringList[i]) && !string.IsNullOrWhiteSpace(Input.StringList[i])) {
 
-                    var annotation = new edu.stanford.nlp.pipeline.Annotation(Input.StringList[i]);
-                    pipeline.annotate(annotation);
-
+                    Annotation annotation = new edu.stanford.nlp.pipeline.Annotation();
+                    ArrayList sentences = new ArrayList();
                     List<double> SentimentValues = new List<double>();
-                    var sentences = annotation.get(new CoreAnnotations.SentencesAnnotation().getClass()) as ArrayList;
+
+                    annotation = new edu.stanford.nlp.pipeline.Annotation(Input.StringList[i]);
+                    pipeline.annotate(annotation);
+                    sentences = annotation.get(new CoreAnnotations.SentencesAnnotation().getClass()) as ArrayList;
+                                        
 
                     int SentenceCount = 0;
 
@@ -153,7 +159,7 @@ namespace CoreNLPSentiment
                         OutputString_SentenceLevel[6] = Predictions_Split[2];
                         OutputString_SentenceLevel[7] = Predictions_Split[3];
                         OutputString_SentenceLevel[8] = Predictions_Split[4];
-                        if (IncludeSentenceText) OutputString_SentenceLevel[9] = sentence.ToString();
+                        if (includeSentenceText) OutputString_SentenceLevel[9] = sentence.ToString();
 
                         pData.StringArrayList.Add(OutputString_SentenceLevel);
                         pData.SegmentNumber.Add(Input.SegmentNumber[i]);
@@ -188,10 +194,22 @@ namespace CoreNLPSentiment
         public void Initialize()
         {
             var props = new java.util.Properties();
+
+
             props.setProperty("annotators", "tokenize, ssplit, parse, sentiment");
+
+            //if we're using an external sentence segmentation strategy, then this is how we're going to do it
+            //https://stackoverflow.com/a/28017131
+            if (!useBuiltInSentenceSplitter) props.put("ssplit.isOneSentence", "true");
+
+
+
+
             props.setProperty("sutime.binders", "0");
             Directory.SetCurrentDirectory(jarRoot);
             pipeline = new StanfordCoreNLP(props);
+
+            
 
         }
 
@@ -224,13 +242,15 @@ namespace CoreNLPSentiment
         #region Import/Export Settings
         public void ImportSettings(Dictionary<string, string> SettingsDict)
         {
-            IncludeSentenceText = Boolean.Parse(SettingsDict["IncludeSentenceText"]);
+            includeSentenceText = Boolean.Parse(SettingsDict["IncludeSentenceText"]);
+            useBuiltInSentenceSplitter = Boolean.Parse(SettingsDict["useBuiltInSentenceSplitter"]);
         }
 
         public Dictionary<string, string> ExportSettings(bool suppressWarnings)
         {
             Dictionary<string, string> SettingsDict = new Dictionary<string, string>();
-            SettingsDict.Add("IncludeSentenceText", IncludeSentenceText.ToString());
+            SettingsDict.Add("IncludeSentenceText", includeSentenceText.ToString());
+            SettingsDict.Add("useBuiltInSentenceSplitter", includeSentenceText.ToString());
             return (SettingsDict);
         }
         #endregion
