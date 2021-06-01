@@ -149,8 +149,17 @@ namespace CoreNLPSentiment
                         string Predictions = RNNCoreAnnotations.getPredictionsAsStringList(tree).ToString();
                         string[] Predictions_Split = Predictions.Replace("[", "").Replace("]", "").Split(',');
                     
-
-                        OutputString_SentenceLevel[0] = SentenceCount.ToString();
+                        if (useBuiltInSentenceSplitter)
+                        {
+                            OutputString_SentenceLevel[0] = SentenceCount.ToString();
+                        }
+                        else
+                        {
+                            //if we're using an external sentence tokenizer, then every segment is
+                            //going to be treated as its own sentence.
+                            OutputString_SentenceLevel[0] = (i + 1).ToString();
+                        }
+                        
                         OutputString_SentenceLevel[1] = Classification;
                         OutputString_SentenceLevel[2] = RNNCoreAnnotations.getPredictedClassProb(tree.label()).ToString();
                         OutputString_SentenceLevel[3] = RNNCoreAnnotations.getPredictedClass(tree).ToString();
