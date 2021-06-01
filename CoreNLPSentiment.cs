@@ -44,7 +44,7 @@ namespace CoreNLPSentiment
 
         public string PluginName { get; } = "CoreNLP Sentiment Analysis";
         public string PluginType { get; } = "Sentiment Analysis";
-        public string PluginVersion { get; } = "1.1.0";
+        public string PluginVersion { get; } = "1.1.01";
         public string PluginAuthor { get; } = "Ryan L. Boyd (ryan@ryanboyd.io)";
         public string PluginDescription { get; } = "Built around Stanford's CoreNLP for .NET (v3.9.1, English model). Uses a trained RNN model to classify sentences from \"very negative\" to \"very positive\". Produces sentence-level scores as output" + Environment.NewLine + Environment.NewLine +
             "Manning, Christopher D., Mihai Surdeanu, John Bauer, Jenny Finkel, Steven J. Bethard, and David McClosky. 2014. The Stanford CoreNLP Natural Language Processing Toolkit In Proceedings of the 52nd Annual Meeting of the Association for Computational Linguistics: System Demonstrations, pp. 55-60.";
@@ -259,7 +259,7 @@ namespace CoreNLPSentiment
         {
             Dictionary<string, string> SettingsDict = new Dictionary<string, string>();
             SettingsDict.Add("IncludeSentenceText", includeSentenceText.ToString());
-            SettingsDict.Add("useBuiltInSentenceSplitter", includeSentenceText.ToString());
+            SettingsDict.Add("useBuiltInSentenceSplitter", useBuiltInSentenceSplitter.ToString());
             return (SettingsDict);
         }
         #endregion
